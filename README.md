@@ -22,4 +22,5 @@ The funtion `DNA.GroupDist.SE` applies a modified version of `meandist` to calcu
 
 ## Citation
 Please cite this package as follows: 
-Carrera-Martínez, R (2025) SLDivMaxR: A R package to calculate between and within single allele divergence. Version 0.1.0 url<<https://github.com/rcarrmart/SLDivMaxR/>>. 
+
+Carrera-Martínez, R (2025) SLDivMaxR: A R package to calculate between and within single allele divergence. Version 0.1.0 URL:<<https://github.com/rcarrmart/SLDivMaxR/>>. 
