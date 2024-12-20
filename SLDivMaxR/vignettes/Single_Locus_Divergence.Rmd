@@ -1,0 +1,697 @@
+---
+title: "SLDivMaxR: Single Locus Divergence Matrix in R"
+output: html_notebook
+---
+
+
+
+```{r}
+rm(list=ls())
+gc() #releases memory
+```
+
+```{r}
+library(ape)
+library(pegas)
+library(vegan)
+```
+
+
+## `Dist2DF.Long` ##
+
+A function to change the data class from dist to data.frame in long format
+
+```
+Dist2DF.Long(inDist, Convert100 = FALSE) 
+```
+>`inDist` Aa matrix of class `dist`, as the output of `ape::dist.dna`. 
+
+>`Convert100` If `TRUE` converts proportion distance (or divergence) input to percentages (`FASLE` is the default). 
+
+```{r}
+Dist2DF.Long <- function(inDist, Convert100 = FALSE) {
+  if (class(inDist) != "dist") stop("Wrong input format for distance data -- class() of input is not 'dist'")
+  if (Convert100 != TRUE & Convert100 != FALSE) stop("Wrong input for 'Convert100' -- Options are 'TRUE', 'FALSE'")
+  A <- attr(inDist, "Size")
+  B <- if (is.null(attr(inDist, "Labels"))) sequence(A) else attr(inDist, "Labels")
+  if (isTRUE(attr(inDist, "Diag"))) attr(inDist, "Diag") <- FALSE
+  if (isTRUE(attr(inDist, "Upper"))) attr(inDist, "Upper") <- FALSE
+  if (isTRUE(length(attr(inDist, "variance"))>0) == FALSE & Convert100 == FALSE)
+    data.frame(
+      x1 = B[unlist(lapply(sequence(A)[-1], function(x) x:A))],
+      x2 = rep(B[-length(B)], (length(B)-1):1),
+      Distance = as.vector(inDist))
+  else 
+    if (isTRUE(length(attr(inDist, "variance"))>0 ) == TRUE & Convert100 == FALSE){
+      data.frame(
+        x1 = B[unlist(lapply(sequence(A)[-1], function(x) x:A))],
+        x2 = rep(B[-length(B)], (length(B)-1):1),
+        Distance = as.vector(inDist),
+        Var = attr(inDist, "variance"))
+    } else
+  if (isTRUE(length(attr(inDist, "variance"))>0) == FALSE  & Convert100 == TRUE){
+        data.frame(
+          x1 = B[unlist(lapply(sequence(A)[-1], function(x) x:A))],
+          x2 = rep(B[-length(B)], (length(B)-1):1),
+          Distance = as.vector(inDist * 100))
+  }  else
+    if (isTRUE(length(attr(inDist, "variance"))>0)== TRUE & Convert100 == TRUE){
+        data.frame(
+          x1 = B[unlist(lapply(sequence(A)[-1], function(x) x:A))],
+          x2 = rep(B[-length(B)], (length(B)-1):1),
+          Distance = as.vector(inDist * 100),
+          Var = (attr(inDist, "variance")) * 100)
+      }  
+}
+```
+
+Example
+```{r}
+Acantho.COI <- read.FASTA(file="F:/Seqs/Acantho_prelim_aln.fasta")
+
+Dist <- dist.dna(Acantho.COI, model = "K80")
+
+#To obtain just a pairwise long format table of proportional distance: 
+long_dist1 <- Dist2DF.Long(Dist)
+head(long_dist1)
+#To obtain just a pairwise long format table of distances in percentages: 
+
+Dist <- dist.dna(Acantho.COI, model = "K80", variance = TRUE)
+long_dist2 <- Dist2DF.Long(Dist, Convert100 = TRUE)
+head(long_dist2)
+
+hist(long_dist2$Distance, breaks = 25, xlab = "Divergence (%)", main = NA, col = "forestgreen")
+box()
+```
+
+## `Dist2DF.Groups` ##
+
+A function that applies `hclust` and `cutree` to a matrix of class `"dist"` to cluster samples by a  maximum distance threshold or to a set number of groups.
+
+```
+Dist2DF.Groups(inDist, 
+              Convert100 = FALSE, 
+              get.group = NULL, 
+              n.groups = NULL)
+```
+>`inDust` A `"dist"` object matrix, output of `ape::dist.dna`. 
+
+>`Convert100` Converts proportions to percentages. 
+
+>`get.group` Provides discreet grouping using maximum divergence threshold between sequences. 
+
+>`n.groups` Groups lower diverging sequences to a specified number of groups, regardless their wihtin group divergences. 
+
+Note: `Dist2DF.Groups` should not be used as a species delimitation analysis as it does not explicitly tests a hypothesis.
+
+```{r}
+Dist2DF.Groups <- function(inDist, Convert100 = FALSE, get.group = NULL, n.groups = NULL) {
+  if (class(inDist) != "dist") stop("Wrong input format for distance data -- class() of input is not 'dist'")
+  if (Convert100 != TRUE & Convert100 != FALSE) stop("Wrong input for 'Convert100' -- Options are 'TRUE', 'FALSE'")
+  if (is.null(get.group) == FALSE & class(get.group) != "numeric") stop("Wrong input for 'get.group' -- must be numeric")
+  if (is.null(n.groups) == FALSE & class(n.groups) != "numeric") stop("Wrong input for 'n.groups' -- must be numeric")
+  if (is.null(get.group) == TRUE & is.null(n.groups) == TRUE) stop("No imput for neither `get.group` or `n.groups`")
+  if (is.null(get.group) == FALSE & is.null(n.groups) == FALSE) 
+    stop("Imput entered for both `get.group` or `n.groups`, choose one.")
+  if (is.null(get.group) == FALSE | is.null(n.groups) == FALSE) {
+    x1 <- hclust(inDist, "complete")
+    x2 <- cutree(x1, k = n.groups, h = get.group)
+    data.frame(Specimen = names(x2),
+               Group = paste("group", sprintf(paste0("%0", nchar(max(x2)),".0f"),as.numeric(x2)), sep = "_"))
+  }
+  if (is.null(get.group) == FALSE | is.null(n.groups) == FALSE & Convert100 == TRUE) {
+    x1 <- hclust((inDist*100), "complete")
+    x2 <- cutree(x1, k = n.groups, h = get.group)
+    data.frame(Specimen = names(x2),
+               Group = paste("group", sprintf(paste0("%0", nchar(max(x2)),".0f"),as.numeric(x2)), sep = "_"))
+  }
+}
+```
+
+
+Example
+```{r}
+Acantho.COI <- read.FASTA(file="F:/Seqs/Acantho_prelim_aln.fasta")
+
+Dist <- dist.dna(Acantho.COI, model = "K80")
+
+#To obtain clusters of specimens by treshold distance in percentages: 
+gGroup_dist <- Dist2DF.Groups(Dist, Convert100 = TRUE, get.group = 10) # will group samples with distances less than 10%
+unique(gGroup_dist$Group)
+#To obtain a set number of clusters: 
+nGroup_dist <- Dist2DF.Groups(Dist, Convert100 = TRUE, n.groups = 10) #will result in 10 clusters 
+unique(nGroup_dist$Group)
+
+
+nGroup_dist.8 <- Dist2DF.Groups(Dist, Convert100 = TRUE, n.groups = 8) #will result in 8 clusters 
+unique(nGroup_dist.8$Group)
+```
+
+
+
+## `Dist2DF.Wide` ##
+
+A function to change the data class from dist to data.frame in wide format.
+
+```
+Dist2DF.Wide(inDist, 
+              Convert100 = FALSE)
+```
+>`inDist` A matrix of class `dist`, as the output of `ape::dist.dna`. 
+
+>`Convert100` If `TRUE` converts proportion distance (or divergence) input to percentages (`FASLE` is the default). 
+
+```{r}
+Dist2DF.Wide <- function(inDist, Convert100 = FALSE) {
+  if (class(inDist) != "dist") stop("Wrong input format for distance data -- class() of input is not 'dist'")
+  if (Convert100 != TRUE & Convert100 != FALSE) stop("Wrong input for 'Convert100' -- Options are 'TRUE', 'FALSE'")
+  A <- attr(inDist, "Size")
+  B <- if (is.null(attr(inDist, "Labels"))) sequence(A) else attr(inDist, "Labels")
+  if (isTRUE(attr(inDist, "Diag"))) attr(inDist, "Diag") <- FALSE
+  if (isTRUE(attr(inDist, "Upper"))) attr(inDist, "Upper") <- FALSE
+  if (Convert100 == FALSE){
+    inDistLong <- data.frame(
+    row = B[unlist(lapply(sequence(A)[-1], function(x) x:A))],
+    col = rep(B[-length(B)], (length(B)-1):1),
+    Distance = as.vector(inDist))  
+  outW <- reshape(inDistLong,  ## Change the long format table into a classic wide table 
+          idvar = "row", 
+          timevar = "col", 
+          direction = "wide")
+  colnames(outW) <- gsub("Distance.","",colnames(outW))
+  names(outW)[1] <- NA
+  outW
+  
+  } else
+  if (Convert100 == TRUE){
+    inDistLong <- data.frame(
+    row = B[unlist(lapply(sequence(A)[-1], function(x) x:A))],
+    col = rep(B[-length(B)], (length(B)-1):1),
+    Distance = as.vector(inDist * 100))  
+  outW <- reshape(inDistLong,  ## Change the long format table into a classic wide table 
+          idvar = "row", 
+          timevar = "col", 
+          direction = "wide")
+  colnames(outW) <- gsub("Distance.","",colnames(outW))
+  names(outW)[1] <- NA
+  outW
+  }
+}
+```
+
+Example 
+```{r}
+
+Acantho.COI <- read.FASTA(file="F:/Seqs/Acantho_prelim_aln.fasta")
+
+Dist <- dist.dna(Acantho.COI, model = "K80")
+
+# Wide matrix-like dataframe of proportional distances
+DistW1 <- Dist2DF.Wide(Dist)
+head(DistW1)
+
+# Wide matrix-like dataframe of distances in percentages
+DistW2 <- Dist2DF.Wide(Dist, Convert100 = TRUE)
+head(DistW2)
+```
+
+
+## `DNA.Dist.df` ##
+
+A function that applies `ape::dist.dna()` but changes `"dist"` class output from `ape::dist.dna()` to `data.frame`. 
+
+```
+DNA.Dist.df(inDNA, 
+            Dist.type = "percent", 
+            Out.Format = "long",
+            Model = "K80", 
+            GAMMA = FALSE,
+            PW.deletion = TRUE, 
+            Var = FALSE, 
+            by.group = NULL, 
+            group.summary = FALSE,
+            within.group = FALSE)
+```
+> `inDNA` is the imput aligned sequences in `.fasta` format. 
+
+> `Dist.type` specifies if the distance output should be in proportions (`"prop"`), percentages (`"percentage"`), or number of nucleotides that are different (`"nucleotide"`). 
+
+> `Model` specifies the evolutionary model to use. Same as in `ape::dist.dna`. Options are: `"RAW"`, `"JC69"`, `"K80"` (default), `"F81"`, `"K81"`, `"F84"`, `"T92"`, `"TN93"`, `"GG95"`, `"LOGDET"`, `"BH87"`, `"PARALIN"`, `"N"`, `"TS"`, `"TV"`, `"INDEL"`, and `"INDELBLOCK"`. Note: if `Model` is `"N"` and `Dist.type` is set for `"prop"` or `"percentage"`, then an error will be return. 
+
+> `GAMMA` same as `gamma` in `ape::dist.dna()`.
+
+> `PW.deletion` specifies if Pairwise deletion should be considered (`TURE`, default) or not (`FALSE`). 
+
+> `Var` if `TRUE` output is the calculated variation (`FALSE` is default)
+
+> `by.group` a vector to group sequences on different categories (e.g., populations, species, lineages, etc.). The vector should follow the same order as the sequence alignment, by applying `vegan::meandist()`. The vector can be the `.csv` output of species delimitation analyses such as `ASAP` and `ABGD`. 
+
+> `group.summary` applies `vegan::meandist()` to formulate a data.frame with within groups mean distance, between groups mean distance and overall distance. A vector with discreet groupings should be imported in `by.group`. 
+
+> `within.group` applies `vegan::meandist()` to create a `data.frame` with each within group mean divergence, and number of saples ("N") by group. A vector with discreet groupings should be imported in `by.group`. Groupls with N = 1 will return `NA`'s. 
+
+```{r}
+DNA.Dist.df <- function(inDNA, 
+                        Dist.type = "percent", 
+                        Out.Format = "long",
+                        Model = "K80", 
+                        GAMMA = FALSE,
+                        PW.deletion = TRUE, 
+                        Var = FALSE, 
+                        by.group = NULL,
+                        group.summary = FALSE, 
+                        within.group = FALSE) {
+  
+  MODELS <- c("RAW", "JC69", "K80", "F81", "K81", "F84", "T92", "TN93", "GG95", "LOGDET", "BH87", "PARALIN", "N", "TS", 
+              "TV", "INDEL", "INDELBLOCK")
+  imod <- pmatch(toupper(Model), MODELS)
+  if (is.na(imod)) stop(paste("'Model' must be one of:", paste("\"", MODELS,"\"", sep = "", collapse = " "), 
+                              ". See ape::dist.dna for more information.", sep = ""))
+  
+  DT <- c("percent", "prop", "nucleotide")
+  iDT <- pmatch((Dist.type), DT)
+  if (is.na(iDT)) stop("Wrong 'Dist.type' input. Options are: 'prop', 'percent', 'nucleotide'.")
+  
+  if (is.null(by.group) == TRUE ) {
+    if (isTRUE(group.summary) == TRUE) stop("No grouping in `by.group` argument included")
+    
+      if (Out.Format == "long" ) {
+      
+      if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
+        inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                as.matrix = FALSE, gamma = GAMMA) 
+        Dist2DF.Long(inDist)
+      } else
+        if (Dist.type == "percent" & Model != "N") { 
+          inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                       as.matrix = FALSE, gamma = GAMMA) * 100 
+              Dist2DF.Long(inDist2)
+        } else
+          if (Dist.type == "nucleotide") { 
+            inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var, 
+                                     as.matrix = FALSE, gamma = GAMMA) 
+            Dist2DF.Long(inDist2)} 
+          }else
+          
+        if (Out.Format == "wide") {
+              if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
+                inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                        as.matrix = FALSE, gamma = GAMMA) 
+                Dist2DF.Wide(inDist)
+              } else
+                if (Dist.type == "percent" & Model != "N") { 
+                  inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                           as.matrix = FALSE, gamma = GAMMA) * 100
+                  Dist2DF.Wide(inDist2)
+                } else
+                  if (Dist.type == "nucleotide") { 
+                    inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var, 
+                                             as.matrix = FALSE, gamma = GAMMA) 
+                    Dist2DF.Wide(inDist2) 
+                  } else
+                    stop("Wrong 'Out.Format' input. Options are: 'long', 'wide'.")} 
+    } else
+              
+  if (is.null(by.group) == FALSE & isTRUE(group.summary) == FALSE & within.group == FALSE) {
+        if (Out.Format == "long" ) {
+                  
+            if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
+                  inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                            as.matrix = FALSE, gamma = GAMMA) 
+                    md <- vegan::meandist(inDist, by.group)
+                    md <- as.dist(md)
+                    Dist2DF.Long(md)
+                  } else
+            if (Dist.type == "percent" & Model != "N") { 
+                  inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                                   as.matrix = FALSE, gamma = GAMMA) * 100 
+                          md <- vegan::meandist(inDist2, by.group)
+                          md <- as.dist(md)
+                          Dist2DF.Long(md)
+                    } else
+                      if (Dist.type == "nucleotide") { 
+                        inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var, 
+                                                 as.matrix = FALSE, gamma = GAMMA) 
+                        md <- vegan::meandist(inDist2, by.group)
+                        md <- as.dist(md)
+                        Dist2DF.Long(md)} 
+          } else
+        
+        if (Out.Format == "wide") {
+            if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
+                    inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                                    as.matrix = FALSE, gamma = GAMMA) 
+                            md <- vegan::meandist(inDist, by.group)
+                            md <- as.dist(md)
+                            Dist2DF.Wide(md)
+                          } else
+            if (Dist.type == "percent" & Model != "N") { 
+                  inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                                       as.matrix = FALSE, gamma = GAMMA) * 100
+                              md <- vegan::meandist(inDist2, by.group)
+                              md <- as.dist(md)
+                              Dist2DF.Wide(md)
+                            } else
+                    if (Dist.type == "nucleotide") { 
+                        inDist3 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var, 
+                                                         as.matrix = FALSE, gamma = GAMMA) 
+                                md <- vegan::meandist(inDist3, by.group)
+                                md <- as.dist(md)
+                                Dist2DF.Wide(md)
+                              } else
+                                stop("Wrong 'Out.Format' input. Options are: 'long', 'wide'.")} 
+    }else
+                          
+    if (isTRUE(group.summary) == TRUE & is.null(by.group) == FALSE & within.group == FALSE) {
+                if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
+                    inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                                  as.matrix = FALSE, gamma = GAMMA) 
+                    md <- vegan::meandist(inDist, by.group)
+                    a <- summary(md)
+                    data.frame("."= c("Within Groups", "Between Groups", "Overall"), Average = c(a$W,a$B,a$D))
+                } else
+                if (Dist.type == "percent" & Model != "N"){
+                    inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                                   as.matrix = FALSE, gamma = GAMMA) * 100 
+                    md <- vegan::meandist(inDist2, by.group)
+                    a <- summary(md)
+                    data.frame("."= c("Within Groups", "Between Groups", "Overall"), Average = c(a$W,a$B,a$D))
+                } else
+                if (Dist.type == "nucleotide") { 
+                          inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var, 
+                                                   as.matrix = FALSE, gamma = GAMMA) 
+                    md <- vegan::meandist(inDist2, by.group)
+                    a <- summary(md)
+                    data.frame("."= c("Within Groups", "Between Groups", "Overall"), Average = c(a$W,a$B,a$D))} 
+    } else
+      
+  if (within.group == TRUE & is.null(by.group) == FALSE) {
+    if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
+          inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                                    as.matrix = FALSE, gamma = GAMMA) 
+          md <- vegan::meandist(inDist, by.group)
+          data.frame(Group = names(attributes(md)$n), N = as.vector(attributes(md)$n), 
+                                       Within.Distance = as.vector(diag(md)))
+          } else
+       if (Dist.type == "percent" & Model != "N") { 
+           inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var, 
+                                                       as.matrix = FALSE, gamma = GAMMA) * 100
+            md <- vegan::meandist(inDist2, by.group)
+            data.frame(Group = names(attributes(md)$n), N = as.vector(attributes(md)$n), 
+                                       Within.Distance = as.vector(diag(md)))
+          } else
+         if (Dist.type == "nucleotide") { 
+           inDist3 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var, 
+                                                         as.matrix = FALSE, gamma = GAMMA) 
+            md <- vegan::meandist(inDist3, by.group)
+            data.frame(Group = names(attributes(md)$n), N = as.vector(attributes(md)$n), 
+                                     Within.Distance = as.vector(diag(md)))
+            } else 
+            if (within.group == TRUE & is.null(by.group) == TRUE) stop("Missing `by.group` argument") }
+  }
+```
+
+Examples
+```{r}
+
+Acantho.COI <- read.FASTA(file="F:/Seqs/Acantho_prelim_aln.fasta")
+
+specimen <- read.csv(file = "C:/Users/rcarr/OneDrive/UWM/Dissertation_Work/specimen_list_Coll2021-22.csv", header = TRUE)
+
+specimen <- data.frame(SpecimenID_full = paste0(specimen$Col.ID,specimen$SpecimenID_abbreviated), 
+                       sp_full = specimen$sp_full)
+
+
+Species.Names <- c(rep("Diplocardia verrucosa",2), 
+                   rep("Trigaster longissima", 19), 
+                   #rep("Trigaster longissima cf", 3), 
+                   rep("Trigaster lankesteri", 3),
+                   rep("Trigaster n sp1", 1),
+                   #rep("Neotrigaster rufa Cord", 4), 
+                   rep("Neotrigaster rufa", 14), 
+                   rep("Neotrigaster complutensis", 8), 
+                   rep("Neotrigaster yukiyui", 11), 
+                   rep("Unknown sp1", 1),
+                   rep("Unknown sp2", 1), 
+                   rep("Dichogaster sp1", 1), 
+                   rep("Borgesia montana", 2), 
+                   rep("Amynthas gracilis", 1))
+                   
+dist.Acant <- DNA.Dist.df(Acantho.COI, Out.Format = "wide", Dist.type = "percent", by.group = Species.Names)
+dist.Acant[2:12] <- round(dist.Acant[2:12], digits = 3) #Round to 3 decimal places
+dist.Acant
+
+dist.Acant.L <- DNA.Dist.df(Acantho.COI, Out.Format = "long", Dist.type = "percent", by.group = Species.Names)
+boxplot(dist.Acant.L$Distance, ylab = "Divergence (%)")
+
+#write.csv(dist.Acant, file = "Acantho_Dist_COI.csv", row.names = FALSE) #Save data.frame as `.csv`
+
+# Using `Dist2DF.Groups()` to obtain groups by threshold 
+
+Dist <- dist.dna(Acantho.COI, model = "K80")
+
+#To obtain clusters of specimens by treshold distance in percentages: 
+gGroup_dist <- Dist2DF.Groups(Dist, Convert100 = TRUE, get.group = 8.5) # will group samples with distances less than 8.5%
+
+dist.Acant2 <- DNA.Dist.df(Acantho.COI, Out.Format = "wide", Dist.type = "percent", by.group = gGroup_dist$Group)
+dist.Acant2
+
+
+## Using the `group.summary` to get the overall distances and averages 
+DNA.Dist.df(Acantho.COI, Dist.type = "percent", by.group = gGroup_dist$Group, group.summary = TRUE)
+
+
+## Subsetting the fasta file 
+
+Acantho.COI <- read.FASTA(file="F:/Seqs/Acantho_prelim_aln.fasta")
+Species.Names <- c(rep("Diplocardia verrucosa",2), 
+                   rep("Trigaster longissima WS", 16), 
+                   rep("Trigaster longissima cf", 3), 
+                   rep("Trigaster lankesteri", 3),
+                   rep("Trigaster n sp1", 1),
+                   rep("Neotrigaster rufa Cord", 4), 
+                   rep("Neotrigaster rufa Yunque", 10), 
+                   rep("Neotrigaster complutensis", 8), 
+                   rep("Neotrigaster yukiyui", 11), 
+                   rep("Unknown sp1", 1),
+                   rep("Unknown sp2", 1), 
+                   rep("Dichogaster sp1", 1), 
+                   rep("Borgesia montana", 2), 
+                   rep("Amynthas gracilis", 1))
+
+Seq.ID <- data.frame(Seq.Names = names(Acantho.COI), Species.Names)
+
+SS.Names <- subset(Seq.ID, Species.Names %in% c("Trigaster longissima WS",
+                                             "Trigaster longissima WS", "Trigaster longissima cf", 
+                                             "Trigaster lankesteri", "Trigaster n sp1", "Neotrigaster rufa Cord", 
+                                             "Neotrigaster rufa Yunque", "Neotrigaster complutensis", 
+                                             "Neotrigaster yukiyui", "Borgesia montana") )
+
+SS.Acantho.COI <- Acantho.COI[names(Acantho.COI) %in% SS.Names$Seq.Names]
+
+DNA.Dist.df(SS.Acantho.COI, Dist.type = "percent", by.group = SS.Names$Species.Names, group.summary = TRUE)
+Gwithin <- DNA.Dist.df(SS.Acantho.COI, Dist.type = "percent", by.group = SS.Names$Species.Names, within.group = TRUE)
+Group_Seqdist <- DNA.Dist.df(SS.Acantho.COI, Dist.type = "percent", by.group = SS.Names$Species.Names, Out.Format = "wide")
+
+x <- (Group_Seqdist[2:9]) 
+x$"Trigaster n sp1" <- NA
+x[nrow(x)+1,] <- NA
+x[2:9,] <- x[1:8,]
+x[1,] <- NA
+rownames(x)<- names(x)
+
+x <- as.matrix(x)
+class(x) <- "numeric"
+
+corrplot::corrplot(x, is.corr = FALSE , col.lim = c(9,24), 
+                   type = "lower",diag = F,method = "color", 
+                   col = colorRampPalette(c("yellow", "green4"))(100), 
+                   addgrid.col = "black", tl.col = "black",tl.cex=(0.7),
+                   addCoef.col = "black", number.digits = 1, number.cex = 0.65)
+
+## With within species divergence as a diagonal in the matrix
+
+diag(x) <- Gwithin$Within.Distance
+corrplot::corrplot(x, is.corr = FALSE , col.lim = c(0,24), na.label = "NA",
+                   type = "lower",diag = T,method = "color", 
+                   col = colorRampPalette(c("white", "yellow", "green4"))(100), 
+                   addgrid.col = "black", tl.col = "black",tl.cex=(0.7),
+                   addCoef.col = "black", number.digits = 1, number.cex = 0.65)
+```
+## `SE` ##
+
+Calculates standard error on a vector. 
+
+```
+SE(x)
+```
+> `x` a numeric vector. `NA` will be automatically ignored. 
+
+```{r}
+SE <- function(x) {
+  x <- as.vector(na.omit(x))
+  sd(x)/sqrt(length(x))
+}
+```
+
+Examples
+```{r}
+a <- c(1:10)
+SE(a)
+
+a <- c(1:10, NA, NA)
+SE(a)
+
+a <- c(NA, NA, NA)
+SE(a)
+```
+
+## `DNA.GroupDist.SE` ##
+
+Calculates standard error of specified between and within group genetic divergences. 
+
+```
+DNA.GroupDist.SE(inDNA,
+                Dist.type = "percent", 
+                Out.Format = "long",
+                Model = "K80", 
+                GAMMA = FALSE,
+                PW.deletion = TRUE, 
+                by.group,
+                within.group = FALSE)
+```
+
+> `inDNA` is the imput aligned sequences in `.fasta` format. 
+
+> `Dist.type` specifies if the distance output should be in proportions (`"prop"`), percentages (`"percentage"`), or number of nucleotides that are different (`"nucleotide"`). 
+
+> `Model` specifies the evolutionary model to use. Same as in `ape::dist.dna`. Options are: `"RAW"`, `"JC69"`, `"K80"` (default), `"F81"`, `"K81"`, `"F84"`, `"T92"`, `"TN93"`, `"GG95"`, `"LOGDET"`, `"BH87"`, `"PARALIN"`, `"N"`, `"TS"`, `"TV"`, `"INDEL"`, and `"INDELBLOCK"`. Note: if `Model` is `"N"` and `Dist.type` is set for `"prop"` or `"percentage"`, then an error will be return. 
+
+> `GAMMA` same as `gamma` in `ape::dist.dna()`.
+
+> `PW.deletion` specifies if Pairwise deletion should be considered (`TURE`, default) or not (`FALSE`). 
+
+> `by.group` a vector to group sequences on different categories (e.g., populations, species, lineages, etc.). The vector should follow the same order as the sequence alignment. The vector can be the `.csv` output of species delimitation analyses such as `ASAP` and `ABGD`. 
+
+> `within.group` creates a `data.frame` with each within group standard error, and number of saples ("N") by group. A vector with discreet groupings should be imported in `by.group`. Groups with N = 1 will return `NA`'s. 
+
+```{r}
+DNA.GroupDist.SE <- function(inDNA, 
+                          Dist.type = "percent", 
+                          Out.Format = "long",
+                          Model = "K80", 
+                          GAMMA = FALSE,
+                          PW.deletion = TRUE, 
+                          by.group,
+                          within.group = FALSE) {
+  
+  MODELS <- c("RAW", "JC69", "K80", "F81", "K81", "F84", "T92", "TN93", "GG95", "LOGDET", "BH87", "PARALIN",
+              "N", "TS", "TV", "INDEL", "INDELBLOCK")
+  imod <- pmatch(toupper(Model), MODELS)
+  if (is.na(imod)) stop(paste("'Model' must be one of:", paste("\"", MODELS,"\"", sep = "", collapse = " "), 
+                              ". See ape::dist.dna for more information.", sep = ""))
+  
+  DT <- c("percent", "prop", "nucleotide")
+  iDT <- pmatch((Dist.type), DT)
+  if (is.na(iDT)) stop("Wrong 'Dist.type' input. Options are: 'prop', 'percent', 'nucleotide'.")
+  
+  if (is.null(by.group) == TRUE) stop("Missing 'by.group' argument")
+  if (length(by.group) != length(inDNA)) stop("'by.group' and 'inDNA' are not of the same length")
+  
+  if (is.null(by.group) == FALSE ) {
+    if (Dist.type == "prop" & Model != "N" & Model != "RAW"){
+   inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = FALSE, 
+                                     as.matrix = FALSE, gamma = GAMMA)} else
+   if (Dist.type == "percent" & Model != "N" & Model != "RAW") {
+     inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = FALSE, 
+                                     as.matrix = FALSE, gamma = GAMMA) * 100
+   } else
+     if (Dist.type == "nucleotide"){
+       inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = ("N"), variance = FALSE, 
+                               as.matrix = FALSE, gamma = GAMMA)}
+    }
+    
+    G <- factor(by.group, exclude = NULL)
+
+    grow <- G[as.dist(row(as.matrix(inDist)))]
+    gcol <- G[as.dist(col(as.matrix(inDist)))]
+
+    fx <- as.numeric(grow) >= as.numeric(gcol)
+    x1 <- ifelse(fx, grow, gcol)
+    x2 <- ifelse(!fx, grow, gcol)
+    n <- table(G)
+    tx <- matrix(TRUE, nlevels(G), nlevels(G))
+    diag(tx) <- n > 1
+    tx[upper.tri(tx)] <- FALSE  
+    out <- matrix(NA, nlevels(G), nlevels(G))
+    tmp <- tapply(inDist, list(x1, x2), SE)
+    out[(tx)] <- tmp[!is.na(tmp)]
+    rownames(out) <- colnames(out) <- levels(G)
+    class(out) <- c("matix")
+
+    if (within.group == TRUE) {
+      data.frame(Group = names(n), N = as.vector(n), Within.Group.SE = as.vector(diag(out)))
+    } else
+    
+    if (Out.Format == "long" & within.group == FALSE) {
+      Dout <- as.dist(out)
+      x <- Dist2DF.Long(Dout)
+      names(x) <- c("x1", "x2", "Standard_Error")
+      x
+    } else
+      
+      if (Out.Format == "wide" & within.group == FALSE) {
+      Dout <- as.dist(out)
+      Dist2DF.Wide(Dout)}
+  }
+```
+
+Examples: 
+```{r}
+Acantho.COI <- read.FASTA(file="F:/Seqs/Acantho_prelim_aln.fasta")
+
+Species.Names <- c(rep("Diplocardia verrucosa",2), 
+                   rep("Trigaster longissima WS", 16), 
+                   rep("Trigaster longissima cf", 3), 
+                   rep("Trigaster lankesteri", 3),
+                   rep("Trigaster n sp1", 1),
+                   rep("Neotrigaster rufa Cord", 4), 
+                   rep("Neotrigaster rufa Yunque", 10), 
+                   rep("Neotrigaster complutensis", 8), 
+                   rep("Neotrigaster yukiyui", 11), 
+                   rep("Unknown sp1", 1),
+                   rep("Unknown sp2", 1), 
+                   rep("Dichogaster sp1", 1), 
+                   rep("Borgesia montana", 2), 
+                   rep("Amynthas gracilis", 1))
+                   
+dist.Acant.SE.Win <- DNA.GroupDist.SE(Acantho.COI, Dist.type = "percent", 
+                                 by.group = Species.Names, within.group = TRUE)
+#Warning indicates presence of groups with n = 1. Ignore. 
+dist.Acant.SE.Win
+
+
+dist.Acant.Win <- DNA.Dist.df(Acantho.COI, Dist.type = "percent", 
+                                 by.group = Species.Names, within.group = TRUE)
+
+dist.Acant.Win <- merge(dist.Acant.Win, dist.Acant.SE.Win, by = c ("Group", "N"))
+dist.Acant.Win
+
+dist.Acant.SE.L <- DNA.GroupDist.SE(Acantho.COI, Out.Format = "long", 
+                                 Dist.type = "percent", by.group = Species.Names)
+dist.Acant.SE.L 
+#Warning indicates presence of groups with n = 1. Ignore. 
+
+dist.Acant.L <- DNA.Dist.df(Acantho.COI, Out.Format = "long", 
+                                 Dist.type = "percent", by.group = Species.Names)
+dist.Acant.L <- merge(dist.Acant.L, dist.Acant.SE.L, by = c("x1", "x2"))
+dist.Acant.L
+
+dist.Acant.SE.W <- DNA.GroupDist.SE(Acantho.COI, Out.Format = "wide", 
+                                 Dist.type = "percent", by.group = Species.Names)
+dist.Acant.SE.W
+#Warning indicates presence of groups with n = 1. Ignore. 
+
+```
+
+
