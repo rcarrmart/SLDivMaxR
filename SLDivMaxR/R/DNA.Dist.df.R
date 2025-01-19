@@ -49,140 +49,53 @@ DNA.Dist.df <- function(inDNA,
   iDT <- pmatch((Dist.type), DT)
   if (is.na(iDT)) stop("Wrong 'Dist.type' input. Options are: 'prop', 'percent', 'nucleotide'.")
 
-  if (is.null(by.group) == TRUE ) {
-    if (isTRUE(group.summary) == TRUE) stop("No grouping in `by.group` argument included")
+  if (Dist.type != "nucleotide" & Model == "N")
+    stop("Change 'Dist.type' to 'nucleotide' if input for Model is 'N'.")
 
-    if (Out.Format == "long" ) {
-
-      if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
-        inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
+  dist.fx <- function(model, distType) {
+    if (distType == "percent" && model != "N") {
+      dist.mtx <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = model, variance = Var,
+                                as.matrix = FALSE, gamma = GAMMA) * 100
+    } else if (distType == "prop" && model != "N") {
+      dist.mtx <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = model, variance = Var,
                                 as.matrix = FALSE, gamma = GAMMA)
-        Dist2DF.Long(inDist)
-      } else
-        if (Dist.type == "percent" & Model != "N") {
-          inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                   as.matrix = FALSE, gamma = GAMMA) * 100
-          Dist2DF.Long(inDist2)
-        } else
-          if (Dist.type == "nucleotide") {
-            inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var,
-                                     as.matrix = FALSE, gamma = GAMMA)
-            Dist2DF.Long(inDist2)}
-    }else
+    } else if (distType == "nucleotide" | model == "N") {
+      dist.mtx <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var,
+                                as.matrix = FALSE, gamma = GAMMA)
+    }
+    return(dist.mtx)
+  }
 
-      if (Out.Format == "wide") {
-        if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
-          inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                  as.matrix = FALSE, gamma = GAMMA)
-          Dist2DF.Wide(inDist)
-        } else
-          if (Dist.type == "percent" & Model != "N") {
-            inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                     as.matrix = FALSE, gamma = GAMMA) * 100
-            Dist2DF.Wide(inDist2)
-          } else
-            if (Dist.type == "nucleotide") {
-              inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var,
-                                       as.matrix = FALSE, gamma = GAMMA)
-              Dist2DF.Wide(inDist2)
-            } else
-              stop("Wrong 'Out.Format' input. Options are: 'long', 'wide'.")}
-  } else
+  out.form <- function(dist.mtx, format) {
+    if (format == "long") {
+      Dist2DF.Long(dist.mtx)
+    } else if (format == "wide") {
+      Dist2DF.Wide(dist.mtx)
+    }
+  }
 
-    if (is.null(by.group) == FALSE & isTRUE(group.summary) == FALSE & within.group == FALSE) {
-      if (Out.Format == "long" ) {
+  if (is.null(by.group)) {
+    dist.mtx <- dist.fx(MODELS[imod], Dist.type)
+    out.form(dist.mtx, Out.Format)
 
-        if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
-          inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                  as.matrix = FALSE, gamma = GAMMA)
-          md <- vegan::meandist(inDist, by.group)
-          md <- as.dist(md)
-          Dist2DF.Long(md)
-        } else
-          if (Dist.type == "percent" & Model != "N") {
-            inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                     as.matrix = FALSE, gamma = GAMMA) * 100
-            md <- vegan::meandist(inDist2, by.group)
-            md <- as.dist(md)
-            Dist2DF.Long(md)
-          } else
-            if (Dist.type == "nucleotide") {
-              inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var,
-                                       as.matrix = FALSE, gamma = GAMMA)
-              md <- vegan::meandist(inDist2, by.group)
-              md <- as.dist(md)
-              Dist2DF.Long(md)}
-      } else
+  } else if (isTRUE(group.summary)) {  # Group summary
+    dist.mtx <- dist.fx(MODELS[imod], Dist.type)
+    md <- vegan::meandist(dist.mtx, by.group)
+    a <- summary(md)
+    return(data.frame("." = c("Within Groups", "Between Groups", "Overall"),
+                      Average = c(a$W, a$B, a$D)))
 
-        if (Out.Format == "wide") {
-          if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
-            inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                    as.matrix = FALSE, gamma = GAMMA)
-            md <- vegan::meandist(inDist, by.group)
-            md <- as.dist(md)
-            Dist2DF.Wide(md)
-          } else
-            if (Dist.type == "percent" & Model != "N") {
-              inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                       as.matrix = FALSE, gamma = GAMMA) * 100
-              md <- vegan::meandist(inDist2, by.group)
-              md <- as.dist(md)
-              Dist2DF.Wide(md)
-            } else
-              if (Dist.type == "nucleotide") {
-                inDist3 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var,
-                                         as.matrix = FALSE, gamma = GAMMA)
-                md <- vegan::meandist(inDist3, by.group)
-                md <- as.dist(md)
-                Dist2DF.Wide(md)
-              } else
-                stop("Wrong 'Out.Format' input. Options are: 'long', 'wide'.")}
-    }else
+  } else if (isTRUE(within.group)) { # Within-group
+    dist.mtx <- dist.fx(MODELS[imod], Dist.type)
+    md <- vegan::meandist(dist.mtx, by.group)
+    return(data.frame(Group = names(attributes(md)$n),
+                      N = as.vector(attributes(md)$n),
+                      Within.Distance = as.vector(diag(md))))
 
-      if (isTRUE(group.summary) == TRUE & is.null(by.group) == FALSE & within.group == FALSE) {
-        if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
-          inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                  as.matrix = FALSE, gamma = GAMMA)
-          md <- vegan::meandist(inDist, by.group)
-          a <- summary(md)
-          data.frame("."= c("Within Groups", "Between Groups", "Overall"), Average = c(a$W,a$B,a$D))
-        } else
-          if (Dist.type == "percent" & Model != "N"){
-            inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                     as.matrix = FALSE, gamma = GAMMA) * 100
-            md <- vegan::meandist(inDist2, by.group)
-            a <- summary(md)
-            data.frame("."= c("Within Groups", "Between Groups", "Overall"), Average = c(a$W,a$B,a$D))
-          } else
-            if (Dist.type == "nucleotide") {
-              inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var,
-                                       as.matrix = FALSE, gamma = GAMMA)
-              md <- vegan::meandist(inDist2, by.group)
-              a <- summary(md)
-              data.frame("."= c("Within Groups", "Between Groups", "Overall"), Average = c(a$W,a$B,a$D))}
-      } else
-
-        if (within.group == TRUE & is.null(by.group) == FALSE) {
-          if (Dist.type == "prop" & Model != "N") { ## From 'ape' package
-            inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                    as.matrix = FALSE, gamma = GAMMA)
-            md <- vegan::meandist(inDist, by.group)
-            data.frame(Group = names(attributes(md)$n), N = as.vector(attributes(md)$n),
-                       Within.Distance = as.vector(diag(md)))
-          } else
-            if (Dist.type == "percent" & Model != "N") {
-              inDist2 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = Var,
-                                       as.matrix = FALSE, gamma = GAMMA) * 100
-              md <- vegan::meandist(inDist2, by.group)
-              data.frame(Group = names(attributes(md)$n), N = as.vector(attributes(md)$n),
-                         Within.Distance = as.vector(diag(md)))
-            } else
-              if (Dist.type == "nucleotide") {
-                inDist3 <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = "N", variance = Var,
-                                         as.matrix = FALSE, gamma = GAMMA)
-                md <- vegan::meandist(inDist3, by.group)
-                data.frame(Group = names(attributes(md)$n), N = as.vector(attributes(md)$n),
-                           Within.Distance = as.vector(diag(md)))
-              } else
-                if (within.group == TRUE & is.null(by.group) == TRUE) stop("Missing `by.group` argument") }
+  } else {                    # Group-wise without summary or within-group
+    dist.mtx <- dist.fx(MODELS[imod], Dist.type)
+    md <- vegan::meandist(dist.mtx, by.group)
+    md <- as.dist(md)
+    out.form(md, Out.Format)
+  }
 }
