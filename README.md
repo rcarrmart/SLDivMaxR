@@ -48,7 +48,9 @@ Applies `hclust` and `cutree` to a matrix of class `"dist"` to cluster samples b
 Dist2DF.Groups(inDist,
                Convert100 = FALSE,
                get.group = NULL,
-               n.groups = NULL)
+               n.groups = NULL,
+               method = "PW",
+               G.Name = "group")
 ```
 `Dist2DF.Groups` takes a distance matrix (`inDist`) and calculates the mean distances between descreet grouping using maximum divergence threshold between sequences (argument `get.group`) or by creating a _N_ number of groups regardless their within group divergences (argument `n.groups`). 
 
