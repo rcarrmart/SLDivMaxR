@@ -26,7 +26,6 @@ Dist2DF.Groups(
 }
 \value{
 A data.frame with the mean distance between groups group distances from a distance matrix produced by `ape::dist.dna`
-     Note: `Dist2DF.Groups` should not be used as a species delimitation analysis as it does not explicitly tests a hypothesis.
 }
 \description{
 A function that applies `hclust` and `cutree` to a matrix of class `"dist"` to cluster samples by a  maximum distance threshold or to a set number of groups.
