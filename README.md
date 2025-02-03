@@ -91,8 +91,6 @@ Arguments:
 
 `within.group` applies `vegan::meandist()` to create a `data.frame` with each within group mean divergence, and number of samples ("N") by group. A vector with discreet groupings should be imported in `by.group`. Groupls with N = 1 will return `NA`'s.
 
-> Note: `DNA.Dist.df` should not be used as a species delimitation analysis as it does not explicitly tests a hypothesis.
-
 
 Example:
 ```{r}
