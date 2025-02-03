@@ -2,9 +2,16 @@
 % Please edit documentation in R/Dist2DF.Groups.R
 \name{Dist2DF.Groups}
 \alias{Dist2DF.Groups}
-\title{Mean Distances by Group}
+\title{Mean Distances between Group}
 \usage{
-Dist2DF.Groups(inDist, Convert100 = FALSE, get.group = NULL, n.groups = NULL)
+Dist2DF.Groups(
+  inDist,
+  Convert100 = FALSE,
+  get.group = NULL,
+  n.groups = NULL,
+  method = "PW",
+  G.Name = "group"
+)
 }
 \arguments{
 \item{Convert100}{Converts proportions to percentages.}
@@ -12,6 +19,8 @@ Dist2DF.Groups(inDist, Convert100 = FALSE, get.group = NULL, n.groups = NULL)
 \item{get.group}{Provides discreet grouping using maximum divergence threshold between sequences.}
 
 \item{n.groups}{Groups low-diverging sequences to a specified number of groups, regardless their within group divergences.}
+
+\item{G.Name}{A user-defined character to name the groupings. Default is "group."}
 
 \item{inDust}{A `"dist"` object matrix, output of `ape::dist.dna` or alike matrix}
 }
