@@ -27,7 +27,14 @@ The input of the function (`inDist`) is a matrix of class `dist`, as in the outp
 
 Example: 
 ```{r}
+library(ape)
+test.dist <- dist.dna(test.DNA)
 
+Dist.df <- Dist2DF.Long(test.dist)
+
+Dist.df.100 <- Dist2DF.Long(test.dist, Convert100 = TRUE)
+
+Dist.df.100x <- Dist2DF.Long(test.dist*100) # equivalent to `Convert100 = TRUE
 ```
 
 ### `Dist2DF.Wide`: `dist` to `data.frame` wide format conversion
@@ -40,7 +47,14 @@ The input of the function (`inDist`) is a matrix of class `dist`, as in the outp
 
 Example: 
 ```{r}
+library(ape)
+test.dist <- dist.dna(test.DNA)
 
+Dist.df <- Dist2DF.Wide(test.dist)
+
+Dist.df.100 <- Dist2DF.Wide(test.dist, Convert100 = TRUE)
+
+Dist.df.100x <- Dist2DF.Wide(test.dist*100) # equivalent to `Convert100 = TRUE
 ```
 ### `Dist2DF.Groups`: Mean Distances between Group
 Applies `hclust` and `cutree` to a matrix of class `"dist"` to cluster samples by a  maximum distance threshold or to a set number of groups.
@@ -56,7 +70,21 @@ Dist2DF.Groups(inDist,
 
 Example: 
 ```{r}
+test.dist <- dist.dna(test.DNA)
 
+# threshold of 0.7 
+dist.g.prop0.7 <- Dist2DF.Groups(test.dist, get.group = 0.7) 
+
+# threshold of 7%
+dist.g.per7 <- Dist2DF.Groups(test.dist, get.group = 7, Convert100 = TRUE)  
+
+# threshold of 10% using the `hclust` and `cutree` approach
+# Setting group names to "Species"
+bySpecies <- Dist2DF.Groups(test.dist, get.group = 10, Convert100 = T,
+                             method = "CT", G.Name = "Species")
+
+# Cluster to 3 groups
+Dist2DF.Groups(test.dist, n.groups = 3, Convert100 = T, method = "CT")
 ```
 ### `DNA.Dist.df`: Single locus divergence data.frame
 Applies `ape::dist.dna()` but changes `"dist"` class output from `ape::dist.dna()` to `data.frame`.
@@ -148,6 +176,7 @@ DNA.GroupDist.SE(inDNA,
 
 Example:
 ```{r}
+
 ```
 
 ## Citation
