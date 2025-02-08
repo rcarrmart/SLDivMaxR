@@ -1,99 +1,110 @@
-#' Mean Distances between Group
+#' Group Divergence Standard Error
 #'
-#' A function that clusters samples of a distance matrix (`class == 'dist'`) by a maximum distance threshold or to a set number of groups.
+#' Calculates standard error of specified between and within group genetic divergences.
 #'
-#' @param inDust A `"dist"` object matrix, output of `ape::dist.dna` or alike matrix
-#' @param Convert100 Converts proportions to percentages.
-#' @param get.group Provides discreet grouping using maximum divergence threshold between sequences.
-#' @param n.groups Groups low-diverging sequences to a specified number of groups, regardless their within group divergences.
-#' @param method Options to use pairwise comparisons ("PW", default), or using the `hclust` and `cutree` approach ("CT"). If using `n.groups`, then `method` should be set to "CT"
-#' @param G.Name A user-defined character to name the groupings. Default is `"group"``.
 #'
-#' @returns A data.frame with the mean distance between groups group distances from a distance matrix produced by `ape::dist.dna`
-#'      Note: `Dist2DF.Groups` should not be used as a species delimitation analysis as it does not explicitly tests a hypothesis.
+#' @param inDNA The input aligned sequences in fasta format.
+#' @param Dist.type Specifies the distance output format. Options are `"prop"`: Proportions; `"percentage"`: Percentages; and `"nucleotide"`: Number of nucleotides that differ.
+#' @param Model Specifies the evolutionary model to use, as in ape::dist.dna. Options include: `"RAW"`, `"JC69"`, `"K80"` (default), `"F81"`, `"K81"`, `"F84"`, `"T92"`, `"TN93"`, `"GG95"`, `"LOGDET"`, `"BH87"`, `"PARALIN"`, `"N"`, `"TS"`, `"TV"`, `"INDEL"`, and `"INDELBLOCK"`. Note: If `Model = "N"` and `Dist.type` is set to `"prop"` or `"percentage"`, an error will be returned.
+#' @param GAMMA Same as `gamma` in `ape::dist.dna()`.
+#' @param PW.deletion Specifies whether pairwise deletion should be considered (TRUE, default) or not (FALSE).
+#' @param by.group A vector for grouping sequences into different categories (e.g., populations, species, lineages). The vector should follow the same order as the sequence alignment.
+#' @param within.group Creates a data.frame with the within-group standard error and the number of samples ("N") by group. A vector with discrete groupings should be provided in by.group. Groups with N = 1 will return NAs.
+#'
+#' @returns A data.frame with the standard errors of the mean distance between or within groups distances.
 #'
 #' @examples
-#' test.dist <- dist.dna(test.DNA)
+#' # Defining groupings
 #'
-#' # threshold of 0.7
-#' dist.g.prop0.7 <- Dist2DF.Groups(test.dist, get.group = 0.7)
+#' #create data.frame with specimen and grouping (e.g., species) IDs
+#' Species.info <- data.frame(Specimen = paste0("Ind",LETTERS[1:9]),
+#'                             Species = paste0("Sp",c(rep(1,3),rep(2,3),rep(3,3))),
+#'                             Seq.names = names(test.DNA))
 #'
-#' # threshold of 7%
-#' dist.g.per7 <- Dist2DF.Groups(test.dist, get.group = 7, Convert100 = TRUE)
+#' Species.info  # Check that they match.
+#' # The funtion uses the order of the `by.group` vector to group the sequences
 #'
-#' # threshold of 10% using the `hclust` and `cutree` approach
-#' # Setting group names to "Species"
-#' bySpecies <- Dist2DF.Groups(test.dist, get.group = 10, Convert100 = T,
-#'                              method = "CT", G.Name = "Species")
+#' DNA.GroupDist.SE(test.DNA, Out.Format = "long", Model = "JC69",
+#'                  by.group = Species.info$Species)
 #'
-#' # Cluster to 3 groups
-#' Dist2DF.Groups(test.dist, n.groups = 3, Convert100 = T, method = "CT") test.dist <- dist.dna(test.DNA)
+# Reorganize the output
+#' CompSE<- DNA.GroupDist.SE(test.DNA, Out.Format = "long", Model = "JC69",
+#'                             by.group = Species.info$Species)
+#' CompSE <- data.frame(Pairs = paste(CompSE$x1, CompSE$x2, sep = "_vs_"),
+#'                      SE = CompSE$Standard_Error)
+#' CompSE
 #'
-#' # threshold of 0.7
-#' dist.g.prop0.7 <- Dist2DF.Groups(test.dist, get.group = 0.7)
-#'
-#' # threshold of 7%
-#' dist.g.per7 <- Dist2DF.Groups(test.dist, get.group = 7, Convert100 = TRUE)
-#'
-#' # threshold of 10% using the `hclust` and `cutree` approach
-#' # Setting group names to "Species"
-#' bySpecies <- Dist2DF.Groups(test.dist, get.group = 10, Convert100 = T,
-#'                             method = "CT", G.Name = "Species")
-#'
-#' # Cluster to 3 groups
-#' Dist2DF.Groups(test.dist, n.groups = 3, Convert100 = T, method = "CT")
-#'
+#' #wide format
+#' WDistSE <- DNA.GroupDist.SE(test.DNA, Out.Format = "wide", Model = "JC69",
+#'                             by.group = Species.info$Species)
+#' WDistSE
 #'
 #' @export
-Dist2DF.Groups <- function(inDist,
-                           Convert100 = FALSE,
-                           get.group = NULL,
-                           n.groups = NULL,
-                           method = "PW",
-                           G.Name = "group") {
-  if (class(inDist) != "dist") stop("Wrong input format for distance data -- class() of input is not 'dist'")
-  if (Convert100 != TRUE & Convert100 != FALSE) stop("Wrong input for 'Convert100' -- Options are 'TRUE', 'FALSE'")
-  if (is.null(get.group) == FALSE & class(get.group) != "numeric") stop("Wrong input for 'get.group' -- must be numeric")
-  if (is.null(n.groups) == FALSE & class(n.groups) != "numeric") stop("Wrong input for 'n.groups' -- must be numeric")
-  if (is.null(get.group) == TRUE & is.null(n.groups) == TRUE) stop("No imput for neither `get.group` or `n.groups`")
-  if (is.null(get.group) == FALSE & is.null(n.groups) == FALSE)
-    stop("Imput entered for both `get.group` or `n.groups`, choose one.")
-  if (method != "CT" & method != "PW")
-    stop("Invalid imput entered for `method`. Options are `CT` or `PW`.")
-  if (method == "PW" & is.null(n.groups) == FALSE)
-    stop("Invalid imput entered for `method`. If `n.groups == TRUE`, option for `method` should be `CT`.")
+DNA.GroupDist.SE <- function(inDNA,
+                             Dist.type = "percent",
+                             Out.Format = "long",
+                             Model = "K80",
+                             GAMMA = FALSE,
+                             PW.deletion = TRUE,
+                             by.group,
+                             within.group = FALSE) {
 
-  if (Convert100) {
-    inDist <- inDist * 100
+  MODELS <- c("RAW", "JC69", "K80", "F81", "K81", "F84", "T92", "TN93", "GG95", "LOGDET", "BH87", "PARALIN",
+              "N", "TS", "TV", "INDEL", "INDELBLOCK")
+  imod <- pmatch(toupper(Model), MODELS)
+  if (is.na(imod)) stop(paste("'Model' must be one of:", paste("\"", MODELS,"\"", sep = "", collapse = " "),
+                              ". See ape::dist.dna for more information.", sep = ""))
+
+  DT <- c("percent", "prop", "nucleotide")
+  iDT <- pmatch((Dist.type), DT)
+  if (is.na(iDT)) stop("Wrong 'Dist.type' input. Options are: 'prop', 'percent', 'nucleotide'.")
+
+  if (is.null(by.group) == TRUE) stop("Missing 'by.group' argument")
+  if (length(by.group) != length(inDNA)) stop("'by.group' and 'inDNA' are not of the same length")
+
+  if (is.null(by.group) == FALSE ) {
+    if (Dist.type == "prop" & Model != "N" & Model != "RAW"){
+      inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = FALSE,
+                              as.matrix = FALSE, gamma = GAMMA)} else
+                                if (Dist.type == "percent" & Model != "N" & Model != "RAW") {
+                                  inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = (MODELS[imod]), variance = FALSE,
+                                                          as.matrix = FALSE, gamma = GAMMA) * 100
+                                } else
+                                  if (Dist.type == "nucleotide"){
+                                    inDist <- ape::dist.dna(inDNA, pairwise.deletion = PW.deletion, model = ("N"), variance = FALSE,
+                                                            as.matrix = FALSE, gamma = GAMMA)}
   }
-  if (method == "CT"){
-  if (is.null(get.group) == FALSE | is.null(n.groups) == FALSE) {
-    x1 <- hclust(inDist, "complete")
-    x2 <- cutree(x1, k = n.groups, h = get.group)
-    data.frame(Specimen = names(x2),
-               Group = paste(G.Name, sprintf(paste0("%0", nchar(max(x2)),".0f"),as.numeric(x2)), sep = "_"))
-  }
+
+  G <- factor(by.group, exclude = NULL)
+
+  grow <- G[as.dist(row(as.matrix(inDist)))]
+  gcol <- G[as.dist(col(as.matrix(inDist)))]
+
+  fx <- as.numeric(grow) >= as.numeric(gcol)
+  x1 <- ifelse(fx, grow, gcol)
+  x2 <- ifelse(!fx, grow, gcol)
+  n <- table(G)
+  tx <- matrix(TRUE, nlevels(G), nlevels(G))
+  diag(tx) <- n > 1
+  tx[upper.tri(tx)] <- FALSE
+  out <- matrix(NA, nlevels(G), nlevels(G))
+  tmp <- tapply(inDist, list(x1, x2), SE)
+  out[(tx)] <- tmp[!is.na(tmp)]
+  rownames(out) <- colnames(out) <- levels(G)
+  class(out) <- c("matix")
+
+  if (within.group == TRUE) {
+    data.frame(Group = names(n), N = as.vector(n), Within.Group.SE = as.vector(diag(out)))
+  } else
+
+    if (Out.Format == "long" & within.group == FALSE) {
+      Dout <- as.dist(out)
+      x <- Dist2DF.Long(Dout)
+      names(x) <- c("x1", "x2", "Standard_Error")
+      x
     } else
-    if (method == "PW"){
 
-      distMatrix <- as.matrix(inDist)
-      diag(distMatrix) <- NA
-
-      GPs <- rep(NA, length(rownames(distMatrix)))
-      gID <- 0
-      for (i in 1:(nrow(distMatrix) - 1)) {
-        if (is.na(GPs[i])) {
-          gID  <- gID  + 1
-          GPs[i] <- gID
-          for (j in (i + 1):nrow(distMatrix)) {
-            if (distMatrix[i, j] <= get.group) {
-              GPs[j] <- gID
-            }
-          }
-        }
-      }
-      maxGP <- max(GPs, na.rm = TRUE)
-      data.frame(Specimen = rownames(distMatrix),
-                 Group = paste(G.Name, sprintf(paste0("%0", nchar(max(maxGP)),".0f"), as.numeric(GPs)), sep = "_"))
-    }
+      if (Out.Format == "wide" & within.group == FALSE) {
+        Dout <- as.dist(out)
+        Dist2DF.Wide(Dout)}
 }
