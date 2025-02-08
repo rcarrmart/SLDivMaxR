@@ -12,6 +12,38 @@
 #' @returns A data.frame with the mean distance between groups group distances from a distance matrix produced by `ape::dist.dna`
 #'      Note: `Dist2DF.Groups` should not be used as a species delimitation analysis as it does not explicitly tests a hypothesis.
 #'
+#' @examples
+#' test.dist <- dist.dna(test.DNA)
+#'
+#' # threshold of 0.7
+#' dist.g.prop0.7 <- Dist2DF.Groups(test.dist, get.group = 0.7)
+#'
+#' # threshold of 7%
+#' dist.g.per7 <- Dist2DF.Groups(test.dist, get.group = 7, Convert100 = TRUE)
+#'
+#' # threshold of 10% using the `hclust` and `cutree` approach
+#' # Setting group names to "Species"
+#' bySpecies <- Dist2DF.Groups(test.dist, get.group = 10, Convert100 = T,
+#'                              method = "CT", G.Name = "Species")
+#'
+#' # Cluster to 3 groups
+#' Dist2DF.Groups(test.dist, n.groups = 3, Convert100 = T, method = "CT") test.dist <- dist.dna(test.DNA)
+#'
+#' # threshold of 0.7
+#' dist.g.prop0.7 <- Dist2DF.Groups(test.dist, get.group = 0.7)
+#'
+#' # threshold of 7%
+#' dist.g.per7 <- Dist2DF.Groups(test.dist, get.group = 7, Convert100 = TRUE)
+#'
+#' # threshold of 10% using the `hclust` and `cutree` approach
+#' # Setting group names to "Species"
+#' bySpecies <- Dist2DF.Groups(test.dist, get.group = 10, Convert100 = T,
+#'                             method = "CT", G.Name = "Species")
+#'
+#' # Cluster to 3 groups
+#' Dist2DF.Groups(test.dist, n.groups = 3, Convert100 = T, method = "CT")
+#'
+#'
 #' @export
 Dist2DF.Groups <- function(inDist,
                            Convert100 = FALSE,
