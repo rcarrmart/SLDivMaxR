@@ -8,17 +8,17 @@
 #' @returns The distance data in class 'data.frame' wide format.
 #'
 #' @examples
-#' library("ape")
-#' COI.data <- read.FASTA(file="COI.fasta")
-#' Dist <- dist.dna(COI.data, model = "K80")
+#' library(ape)
+#' test.dist <- dist.dna(test.DNA)
 #'
-#' # Wide matrix-like dataframe of proportional distances
-#' DistW1 <- Dist2DF.Wide(Dist)
-#' head(DistW1)
+#' Dist.df <- Dist2DF.Wide(test.dist)
+#' Dist.df 
 #'
-#' # Wide matrix-like dataframe of distances in percentages
-#' DistW2 <- Dist2DF.Wide(Dist, Convert100 = TRUE)
-#' head(DistW2)
+#' Dist.df.100 <- Dist2DF.Wide(test.dist, Convert100 = TRUE)
+#' Dist.df.100 
+#'
+#' Dist.df.100x <- Dist2DF.Wide(test.dist*100) # equivalent to `Convert100 = TRUE
+#' Dist.df.100x 
 #'
 #' @export
 Dist2DF.Wide <- function(inDist,
