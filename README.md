@@ -137,7 +137,7 @@ DNA.Dist.df(test.DNA, Out.Format = "long", Model = "JC69")
 ####
 #create data.frame with specimen and grouping (e.g., species) IDs
 Species.info <- data.frame(Specimen = paste0("Ind",LETTERS[1:9]),
-                           Species = paste0("Sp",c(rep(1,3),rep(2,3),rep(3,3)))
+                           Species = paste0("Sp",c(rep(1,3),rep(2,3),rep(3,3))),
                             Seq.names = names(test.DNA))
 
 Species.info  # Check that they match.
