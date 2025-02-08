@@ -8,18 +8,17 @@
 #' @return The distance data in class 'data.frame' long format
 #'
 #' @examples
-#' library("ape")
-#' COI.data <- read.FASTA(file="COI_aln.fasta")
-#' Dist <- dist.dna(COI.data, model = "K80")
+#' library(ape)
+#' test.dist <- dist.dna(test.DNA)
 #'
-#' #To obtain just a pairwise long format table of proportional distance:
-#' long_dist1 <- Dist2DF.Long(Dist)
-#' head(long_dist1)
+#' Dist.df <- Dist2DF.Wide(test.dist)
+#' Dist.df
 #'
-#' #To obtain just a pairwise long format table of distances in percentages:
-#' Dist <- dist.dna(COI.data, model = "K80", variance = TRUE)
-#' long_dist2 <- Dist2DF.Long(Dist, Convert100 = TRUE)
-#' head(long_dist2)
+#' Dist.df.100 <- Dist2DF.Wide(test.dist, Convert100 = TRUE)
+#' Dist.df.100
+#'
+#' Dist.df.100x <- Dist2DF.Wide(test.dist*100) # equivalent to `Convert100 = TRUE
+#' Dist.df.100x
 #'
 #' @export
 Dist2DF.Long <- function(inDist,
