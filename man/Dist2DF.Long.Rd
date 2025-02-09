@@ -19,13 +19,15 @@ A function to change the data class from `dist` to `data.frame` in long format.
 }
 \examples{
 library(ape)
-
 test.dist <- dist.dna(test.DNA)
 
 Dist.df <- Dist2DF.Long(test.dist)
+Dist.df
 
 Dist.df.100 <- Dist2DF.Long(test.dist, Convert100 = TRUE)
+Dist.df.100
 
 Dist.df.100x <- Dist2DF.Long(test.dist*100) # equivalent to `Convert100 = TRUE
+Dist.df.100x
 
 }

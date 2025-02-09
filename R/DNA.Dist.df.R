@@ -87,7 +87,7 @@ DNA.Dist.df <- function(inDNA,
 
   if (Dist.type != "nucleotide" & Model == "N")
     stop("Change 'Dist.type' to 'nucleotide' if input for Model is 'N'.")
-  if (length(by.group) != length(inDNA)) stop("`by.group` vector and the DNA list are of different lengths.")
+  if (!is.null(by.group) && length(by.group) != length(inDNA)) stop("`by.group` vector and the DNA list are of different lengths.")
   if (is.na(by.group) == TRUE) stop("Missing data on `by.group` vector")
 
   dist.fx <- function(model, distType) {
