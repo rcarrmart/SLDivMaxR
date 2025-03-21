@@ -233,7 +233,7 @@ WDistSE
 ## Citation
 Please cite this package as follows: 
 
-Carrera-Martínez, R (2025) SLDivMaxR: An R Package for Calculating Single Allele Divergence Matrices Between and Within Taxa. Version 0.1.0 URL:<<https://github.com/rcarrmart/SLDivMaxR/>>. 
+Carrera-Martínez, R (2025) SLDivMaxR: A R Package for Calculating Single Allele Divergence Matrices Between and Within Taxa. Version 0.1.0 URL:<<https://github.com/rcarrmart/SLDivMaxR/>>. 
 
 To cite `vegan`: 
 
