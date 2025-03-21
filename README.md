@@ -1,5 +1,5 @@
 # SLDivMaxR v. 0.1.0
-### An R Package for Calculating Single Allele Divergence Matrices Between and Within Taxa
+### A R Package for Calculating Single Allele Divergence Matrices Between and Within Taxa
 
 ## Package Summary
 `SLDivMaxR` is a straightforward R package designed to calculate genetic divergence (or distance) for single alleles at each sequence level, defined by user-specified groups (such as species, subspecies, lineages, haplotypes, etc.), as well as within each defined group. The package is optimized for analyzing large datasets, enhancing replicability, and producing outputs in a `data.frame` format. Built upon the `ape` function `dist.dna` to compute genetic divergence and the `vegan` function `meandist` for calculating mean divergence between and within groups, SLDivMaxR simplifies the manual designation of groups required by other commonly used software. This makes it a useful tool for large datasets and can be seamlessly integrated into more complex population genetics analyses.
